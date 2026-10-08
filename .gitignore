@@ -1,0 +1,38 @@
+# https://git-scm.com/docs/gitignore
+
+# ---------------------------------------------------------------------
+# DO NOT CHANGE THIS SECTION
+
+# Dependencies
+node_modules/
+
+# Compiled output
+dist/
+build/
+coverage/
+
+# Generated at runtime
+*.log
+.cache
+
+# Personal files
+.idea
+
+# System files
+.DS_Store
+
+# Serena mcp
+.serena
+project.yml
+
+#env
+.env
+
+# ---------------------------------------------------------------------
+# Add specific rules here…
+
+# Local Terraform smoke-test artifacts
+.tmp/
+.terraform/
+*.tfstate
+*.tfstate.*
