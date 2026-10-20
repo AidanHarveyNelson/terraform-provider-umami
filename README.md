@@ -44,7 +44,9 @@ provider "umami" {
 | `username` | `UMAMI_USERNAME` |
 | `password` | `UMAMI_PASSWORD` |
 
-The environment variable names match the official API client. When both an API key and a username/password are set, the API key is used.
+The environment variable names match the official API client.
+
+When both an API key and a username/password are set, the provider tries the API key first and logs in if Umami rejects it. Instances older than v3.4.0 always reject API keys. So one configuration keeps working before and after an upgrade to v3.4.0.
 
 ### Usage
 
