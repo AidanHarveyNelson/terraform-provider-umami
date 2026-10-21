@@ -49,7 +49,7 @@ func (p *UmamiProvider) Metadata(ctx context.Context, req provider.MetadataReque
 
 func (p *UmamiProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manage [Umami](https://umami.is/) analytics websites and teams. Authenticate with an API key (Umami v3.4.0+ or Umami Cloud), or with a username and password (self-hosted only). If both are set, the API key is used.",
+		MarkdownDescription: "Manage [Umami](https://umami.is/) analytics websites and teams. Authenticate with an API key (Umami v3.4.0+ or Umami Cloud), or with a username and password (self-hosted only). If both are set, the API key is tried first and login is used if Umami rejects it, as versions before v3.4.0 do.",
 		Attributes: map[string]schema.Attribute{
 			"endpoint": schema.StringAttribute{
 				MarkdownDescription: "Umami API base URL, including the API path: `https://<your-umami>/api` when self-hosted, or `https://api.umami.is/v1` for Umami Cloud. Also set by `UMAMI_API_CLIENT_ENDPOINT`.",
@@ -144,11 +144,16 @@ func configOrEnv(value types.String, envVar string) string {
 }
 
 func (p *UmamiProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{}
+	return []func() resource.Resource{
+		NewTeamResource,
+		NewWebsiteResource,
+	}
 }
 
 func (p *UmamiProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{}
+	return []func() datasource.DataSource{
+		NewWebsiteDataSource,
+	}
 }
 
 func New(version string) func() provider.Provider {

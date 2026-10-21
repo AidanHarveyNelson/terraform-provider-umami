@@ -2,7 +2,7 @@
 # The default login is admin / umami.
 services:
   umami:
-    image: ghcr.io/umami-software/umami:${UMAMI_VERSION:-latest}
+    image: ghcr.io/umami-software/umami:${UMAMI_VERSION:-3.4.0}
     ports:
       - '3000:3000'
     environment:
