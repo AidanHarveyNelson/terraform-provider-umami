@@ -27,6 +27,17 @@ func testAccPreCheck(t *testing.T) {
 	}
 }
 
+const envTestMemberUserID = "UMAMI_TEST_MEMBER_USER_ID"
+
+func testAccPreCheckMember(t *testing.T) {
+	t.Helper()
+
+	testAccPreCheck(t)
+	if os.Getenv(envTestMemberUserID) == "" {
+		t.Fatalf("%s must be set to the ID of a second user for team membership tests", envTestMemberUserID)
+	}
+}
+
 func testAccClient(t *testing.T) *Client {
 	t.Helper()
 

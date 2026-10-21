@@ -145,6 +145,7 @@ func configOrEnv(value types.String, envVar string) string {
 
 func (p *UmamiProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		NewTeamMemberResource,
 		NewTeamResource,
 		NewWebsiteResource,
 	}

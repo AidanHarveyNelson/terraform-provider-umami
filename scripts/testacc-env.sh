@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Prints a .env for running acceptance tests against the docker-compose Umami
 # as a non-admin user: scripts/testacc-env.sh [api_key|login|fallback] > .env
+# It also creates a second user for team membership tests.
 #   api_key   a real API key (Umami v3.4.0+)
 #   login     username and password
 #   fallback  an invalid API key plus username and password, to exercise the
@@ -23,10 +24,22 @@ login() {
 }
 
 admin_token="$(login admin umami)"
-curl -s -X POST "$endpoint/users" -H "Authorization: Bearer $admin_token" -H 'Content-Type: application/json' \
-  -d "{\"username\":\"$user\",\"password\":\"$password\",\"role\":\"user\"}" >/dev/null
+create_user() {
+  local id
+  id="$(curl -s -X POST "$endpoint/users" -H "Authorization: Bearer $admin_token" -H 'Content-Type: application/json' \
+    -d "{\"username\":\"$1\",\"password\":\"$password\",\"role\":\"$2\"}" | jq -r '.id // empty')"
+  if [ -z "$id" ]; then
+    id="$(curl -fs "$endpoint/admin/users?search=$1" -H "Authorization: Bearer $admin_token" |
+      jq -r ".data[] | select(.username == \"$1\") | .id")"
+  fi
+  echo "$id"
+}
+
+create_user "$user" user >/dev/null
+member_id="$(create_user tfacc-member view-only)"
 
 echo "UMAMI_API_CLIENT_ENDPOINT=$endpoint"
+echo "UMAMI_TEST_MEMBER_USER_ID=$member_id"
 
 case "$mode" in
   api_key)
