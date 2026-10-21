@@ -108,13 +108,19 @@ make testacc
 make umami-down
 ```
 
-`make umami-up` takes two options:
+`make umami-up` takes three options:
 
 - `AUTH` sets the authentication mode. `api_key` (default) uses a real API key and needs v3.4.0+. `login` uses a username and password. `fallback` sets an invalid API key plus a username and password, to test the fallback to login.
 - `UMAMI_VERSION` sets the image tag, e.g. `UMAMI_VERSION=3.3.1 AUTH=login` for an instance from before API keys existed.
+- `UMAMI_PORT` sets the local port (default `3000`).
 
 CI uses the same docker compose setup, so it needs no secrets. Each job starts its own Umami, and the matrix covers Umami 3.4.0 and 3.3.1, every auth mode, and Terraform 1.0 and latest.
 
 ### Releasing
 
-Push a `v*` tag. The release workflow builds and signs the binaries with GoReleaser. It needs the `GPG_PRIVATE_KEY` and `PASSPHRASE` secrets.
+1. Move the `Unreleased` entries in `CHANGELOG.md` under the new version and merge.
+2. Tag `main` and push the tag, e.g. `git tag v0.2.0 && git push origin v0.2.0`.
+
+The release workflow builds the binaries with GoReleaser, signs the checksums and publishes a GitHub release with the registry manifest. It needs the `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets. The Terraform Registry picks up new releases through its GitHub webhook once the provider is published there with the matching GPG public key.
+
+CI runs `goreleaser check` on every change, so a broken release config fails before a tag is pushed.
