@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
@@ -42,4 +43,8 @@ func clientFromProviderData(providerData any, diags *diag.Diagnostics, kind stri
 
 func configureResource(req resource.ConfigureRequest, resp *resource.ConfigureResponse) *Client {
 	return clientFromProviderData(req.ProviderData, &resp.Diagnostics, "Resource")
+}
+
+func configureDataSource(req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) *Client {
+	return clientFromProviderData(req.ProviderData, &resp.Diagnostics, "Data Source")
 }
