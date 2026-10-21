@@ -6,17 +6,18 @@ LOCAL_PROVIDER_TFRC = $(LOCAL_PROVIDER_DIR)/terraform-dev.tfrc
 EXAMPLE ?= examples/resources/umami_website
 PROVIDER_SOURCE ?= aidanharveynelson/umami
 COMPOSE = docker compose -p terraform-provider-umami
+AUTH ?= api_key
 
 # Run acceptance tests
 .PHONY: testacc
 testacc:
 	set -a && . ./.env && set +a && TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
 
-# Start a throwaway Umami and write .env for it
+# Start a throwaway Umami and write .env for it (AUTH=api_key|login|fallback, UMAMI_VERSION=3.4.0)
 .PHONY: umami-up
 umami-up:
 	$(COMPOSE) up -d --wait
-	scripts/testacc-env.sh > .env
+	scripts/testacc-env.sh $(AUTH) > .env
 
 .PHONY: umami-down
 umami-down:

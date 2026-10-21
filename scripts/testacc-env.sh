@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # Prints a .env for running acceptance tests against the docker-compose Umami
-# as a non-admin user with an API key: scripts/testacc-env.sh > .env
+# as a non-admin user: scripts/testacc-env.sh [api_key|login|fallback] > .env
+#   api_key   a real API key (Umami v3.4.0+)
+#   login     username and password
+#   fallback  an invalid API key plus username and password, to exercise the
+#             provider falling back to login when the key is rejected
 set -euo pipefail
 
+mode="${1:-api_key}"
 endpoint="${UMAMI_API_CLIENT_ENDPOINT:-http://localhost:3000/api}"
 user="tfacc"
 password="tfacc-password-1"
@@ -21,9 +26,22 @@ admin_token="$(login admin umami)"
 curl -s -X POST "$endpoint/users" -H "Authorization: Bearer $admin_token" -H 'Content-Type: application/json' \
   -d "{\"username\":\"$user\",\"password\":\"$password\",\"role\":\"user\"}" >/dev/null
 
-user_token="$(login "$user" "$password")"
-api_key="$(curl -fs -X POST "$endpoint/me/api-keys" -H "Authorization: Bearer $user_token" \
-  -H 'Content-Type: application/json' -d '{"name":"tfacc"}' | jq -r .key)"
-
 echo "UMAMI_API_CLIENT_ENDPOINT=$endpoint"
-echo "UMAMI_API_KEY=$api_key"
+
+case "$mode" in
+  api_key)
+    user_token="$(login "$user" "$password")"
+    api_key="$(curl -fs -X POST "$endpoint/me/api-keys" -H "Authorization: Bearer $user_token" \
+      -H 'Content-Type: application/json' -d '{"name":"tfacc"}' | jq -r .key)"
+    echo "UMAMI_API_KEY=$api_key"
+    ;;
+  login | fallback)
+    [ "$mode" = fallback ] && echo "UMAMI_API_KEY=umami_invalidinvalidinvalidinvalid00"
+    echo "UMAMI_USERNAME=$user"
+    echo "UMAMI_PASSWORD=$password"
+    ;;
+  *)
+    echo "unknown mode: $mode" >&2
+    exit 1
+    ;;
+esac

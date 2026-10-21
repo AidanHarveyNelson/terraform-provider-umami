@@ -77,10 +77,26 @@ func NewClient(ctx context.Context, cfg ClientConfig) (*Client, error) {
 		httpClient: httpClient,
 	}
 
+	hasLogin := cfg.Username != "" && cfg.Password != ""
+
 	switch {
+	case cfg.APIKey != "" && hasLogin:
+		// Umami before v3.4.0 rejects API keys, so fall back to logging in.
+		_, err := c.GetMe(ctx)
+		if err == nil {
+			return c, nil
+		}
+		if !isUnauthorized(err) {
+			return nil, err
+		}
+		c.apiKey = ""
+		if err := c.login(ctx, cfg.Username, cfg.Password); err != nil {
+			return nil, fmt.Errorf("the API key was rejected and %w", err)
+		}
+		return c, nil
 	case cfg.APIKey != "":
 		return c, nil
-	case cfg.Username != "" && cfg.Password != "":
+	case hasLogin:
 		if err := c.login(ctx, cfg.Username, cfg.Password); err != nil {
 			return nil, err
 		}
@@ -88,6 +104,11 @@ func NewClient(ctx context.Context, cfg ClientConfig) (*Client, error) {
 	default:
 		return nil, errors.New("either an API key or a username and password must be configured")
 	}
+}
+
+func isUnauthorized(err error) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && (apiErr.StatusCode == http.StatusUnauthorized || apiErr.StatusCode == http.StatusForbidden)
 }
 
 type loginResponse struct {

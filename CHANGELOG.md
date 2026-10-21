@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Provider configuration with API key or username/password authentication.
+  When both are set, the provider falls back to login if the API key is rejected
+  (Umami before v3.4.0).
 - `umami_website` resource, with a caller-chosen `id` and team transfer.
 - `umami_team` resource.
 - `umami_website` data source.

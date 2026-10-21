@@ -198,3 +198,55 @@ func TestAPIErrorIncludesFieldErrors(t *testing.T) {
 		t.Fatalf("err = %v, want field errors", err)
 	}
 }
+
+func TestAPIKeyFallsBackToLogin(t *testing.T) {
+	cases := map[string]struct {
+		keyValid  bool
+		wantLogin bool
+	}{
+		"key accepted": {keyValid: true},
+		"key rejected": {keyValid: false, wantLogin: true},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			loggedIn := false
+			srv := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/auth/login":
+					loggedIn = true
+					writeJSON(w, 200, `{"token":"tok"}`)
+				case "/me":
+					auth := r.Header.Get("Authorization")
+					if auth == "Bearer tok" || (tc.keyValid && auth == "Bearer umami_key") {
+						writeJSON(w, 200, `{"user":{"id":"u1"}}`)
+						return
+					}
+					writeJSON(w, 401, unauthorizedBody)
+				}
+			})
+
+			c, err := NewClient(context.Background(), ClientConfig{Endpoint: srv.URL, APIKey: "umami_key", Username: "admin", Password: "pw"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if loggedIn != tc.wantLogin {
+				t.Fatalf("logged in = %v, want %v", loggedIn, tc.wantLogin)
+			}
+			if _, err := c.GetMe(context.Background()); err != nil {
+				t.Fatalf("GetMe after configure: %v", err)
+			}
+		})
+	}
+}
+
+func TestAPIKeyRejectedAndLoginFails(t *testing.T) {
+	srv := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 401, unauthorizedBody)
+	})
+
+	_, err := NewClient(context.Background(), ClientConfig{Endpoint: srv.URL, APIKey: "umami_key", Username: "admin", Password: "bad"})
+	if err == nil || !strings.Contains(err.Error(), "API key was rejected") {
+		t.Fatalf("err = %v, want both failures reported", err)
+	}
+}

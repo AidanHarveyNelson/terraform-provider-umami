@@ -44,7 +44,9 @@ provider "umami" {
 | `username` | `UMAMI_USERNAME` |
 | `password` | `UMAMI_PASSWORD` |
 
-The environment variable names match the official API client. When both an API key and a username/password are set, the API key is used.
+The environment variable names match the official API client.
+
+When both an API key and a username/password are set, the provider tries the API key first and logs in if Umami rejects it. Instances older than v3.4.0 always reject API keys. So one configuration keeps working before and after an upgrade to v3.4.0.
 
 ### Usage
 
@@ -98,15 +100,20 @@ Acceptance tests create and destroy real objects in the Umami instance configure
 make testacc
 ```
 
-To run them against a throwaway local instance instead, start Umami with Docker and let it write `.env` for a non-admin user with an API key:
+To run them against a throwaway local instance instead, start Umami with Docker and let it write `.env` for a non-admin user:
 
 ```sh
-make umami-up
+make umami-up                   # Umami 3.4.0, API key auth
 make testacc
 make umami-down
 ```
 
-CI runs the acceptance tests when the `UMAMI_API_CLIENT_ENDPOINT` and `UMAMI_API_KEY` repository secrets are set, and skips them otherwise.
+`make umami-up` takes two options:
+
+- `AUTH` sets the authentication mode. `api_key` (default) uses a real API key and needs v3.4.0+. `login` uses a username and password. `fallback` sets an invalid API key plus a username and password, to test the fallback to login.
+- `UMAMI_VERSION` sets the image tag, e.g. `UMAMI_VERSION=3.3.1 AUTH=login` for an instance from before API keys existed.
+
+CI uses the same docker compose setup, so it needs no secrets. Each job starts its own Umami, and the matrix covers Umami 3.4.0 and 3.3.1, every auth mode, and Terraform 1.0 and latest.
 
 ### Releasing
 
