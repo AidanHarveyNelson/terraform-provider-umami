@@ -399,3 +399,47 @@ func (c *Client) ListTeamWebsites(ctx context.Context, teamID string) ([]Website
 func (c *Client) DeleteTeam(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/teams/"+url.PathEscape(id), nil, nil)
 }
+
+type TeamMember struct {
+	ID        string  `json:"id"`
+	TeamID    string  `json:"teamId"`
+	UserID    string  `json:"userId"`
+	Role      string  `json:"role"`
+	CreatedAt *string `json:"createdAt"`
+}
+
+func teamMemberPath(teamID, userID string) string {
+	return "/teams/" + url.PathEscape(teamID) + "/users/" + url.PathEscape(userID)
+}
+
+func (c *Client) AddTeamMember(ctx context.Context, teamID, userID, role string) (*TeamMember, error) {
+	var member TeamMember
+	body := map[string]string{"userId": userID, "role": role}
+	if err := c.do(ctx, http.MethodPost, "/teams/"+url.PathEscape(teamID)+"/users", body, &member); err != nil {
+		return nil, err
+	}
+	return &member, nil
+}
+
+func (c *Client) GetTeamMember(ctx context.Context, teamID, userID string) (*TeamMember, error) {
+	var member *TeamMember
+	if err := c.do(ctx, http.MethodGet, teamMemberPath(teamID, userID), nil, &member); err != nil {
+		return nil, c.resolveMissing(ctx, err)
+	}
+	if member == nil || member.UserID == "" {
+		return nil, ErrNotFound
+	}
+	return member, nil
+}
+
+func (c *Client) UpdateTeamMember(ctx context.Context, teamID, userID, role string) (*TeamMember, error) {
+	var member TeamMember
+	if err := c.do(ctx, http.MethodPost, teamMemberPath(teamID, userID), map[string]string{"role": role}, &member); err != nil {
+		return nil, err
+	}
+	return &member, nil
+}
+
+func (c *Client) RemoveTeamMember(ctx context.Context, teamID, userID string) error {
+	return c.do(ctx, http.MethodDelete, teamMemberPath(teamID, userID), nil, nil)
+}

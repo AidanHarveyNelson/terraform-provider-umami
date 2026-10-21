@@ -250,3 +250,30 @@ func TestAPIKeyRejectedAndLoginFails(t *testing.T) {
 		t.Fatalf("err = %v, want both failures reported", err)
 	}
 }
+
+func TestGetTeamMemberNotFound(t *testing.T) {
+	cases := map[string]struct {
+		status int
+		body   string
+	}{
+		"removed member": {status: 200, body: `null`},
+		"missing team":   {status: 401, body: unauthorizedBody},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			srv := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/me" {
+					writeJSON(w, 200, `{"user":{"id":"u1"}}`)
+					return
+				}
+				writeJSON(w, tc.status, tc.body)
+			})
+			c, _ := NewClient(context.Background(), ClientConfig{Endpoint: srv.URL, APIKey: "umami_k"})
+
+			if _, err := c.GetTeamMember(context.Background(), "t1", "u2"); !errors.Is(err, ErrNotFound) {
+				t.Fatalf("err = %v, want ErrNotFound", err)
+			}
+		})
+	}
+}
