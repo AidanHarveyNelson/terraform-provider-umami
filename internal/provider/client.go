@@ -383,22 +383,50 @@ func (c *Client) UpdateTeam(ctx context.Context, id, name string) (*Team, error)
 	return &team, nil
 }
 
-func (c *Client) ListTeamWebsites(ctx context.Context, teamID string) ([]Website, error) {
-	var websites []Website
+func listAll[T any](ctx context.Context, c *Client, path string) ([]T, error) {
+	sep := "?"
+	if strings.Contains(path, "?") {
+		sep = "&"
+	}
+	var all []T
 	for page := 1; ; page++ {
 		var res struct {
-			Data  []Website `json:"data"`
-			Count int       `json:"count"`
+			Data  []T `json:"data"`
+			Count int `json:"count"`
 		}
-		path := fmt.Sprintf("/teams/%s/websites?page=%d&pageSize=100", url.PathEscape(teamID), page)
-		if err := c.do(ctx, http.MethodGet, path, nil, &res); err != nil {
+		if err := c.do(ctx, http.MethodGet, fmt.Sprintf("%s%spage=%d&pageSize=100", path, sep, page), nil, &res); err != nil {
 			return nil, err
 		}
-		websites = append(websites, res.Data...)
-		if len(res.Data) == 0 || len(websites) >= res.Count {
-			return websites, nil
+		all = append(all, res.Data...)
+		if len(res.Data) == 0 || len(all) >= res.Count {
+			return all, nil
 		}
 	}
+}
+
+func (c *Client) ListTeamWebsites(ctx context.Context, teamID string) ([]Website, error) {
+	return listAll[Website](ctx, c, "/teams/"+url.PathEscape(teamID)+"/websites")
+}
+
+// ListWebsites returns the user's websites and those of teams where the user is owner or manager.
+func (c *Client) ListWebsites(ctx context.Context, search string) ([]Website, error) {
+	query := url.Values{"includeTeams": {"true"}}
+	if search != "" {
+		query.Set("search", search)
+	}
+	return listAll[Website](ctx, c, "/websites?"+query.Encode())
+}
+
+func (c *Client) ListTeams(ctx context.Context) ([]Team, error) {
+	return listAll[Team](ctx, c, "/teams")
+}
+
+func (c *Client) ListTeamMembers(ctx context.Context, teamID string) ([]TeamMember, error) {
+	members, err := listAll[TeamMember](ctx, c, "/teams/"+url.PathEscape(teamID)+"/users")
+	if err != nil {
+		return nil, c.resolveMissing(ctx, err)
+	}
+	return members, nil
 }
 
 func (c *Client) DeleteTeam(ctx context.Context, id string) error {
@@ -411,6 +439,10 @@ type TeamMember struct {
 	UserID    string  `json:"userId"`
 	Role      string  `json:"role"`
 	CreatedAt *string `json:"createdAt"`
+
+	User *struct {
+		Username string `json:"username"`
+	} `json:"user"`
 }
 
 func teamMemberPath(teamID, userID string) string {

@@ -1,6 +1,6 @@
 # Umami Terraform Provider
 
-The [Umami](https://umami.is/) provider for Terraform. It manages websites and teams through the Umami REST API, on self-hosted instances and on Umami Cloud.
+The [Umami](https://umami.is/) provider for Terraform. It manages websites, teams, team members and share links through the Umami REST API, on self-hosted instances and on Umami Cloud.
 
 > **Note:** The provider is built on the [Umami API](https://docs.umami.is/docs/api), using the same endpoints and authentication as the official [`@umami/api-client`](https://docs.umami.is/docs/api/api-client).
 
@@ -84,6 +84,9 @@ terraform import umami_website.app a8729a96-0000-4000-8000-000000000000
 | Resource | [`umami_team`](docs/resources/team.md) |
 | Resource | [`umami_team_member`](docs/resources/team_member.md) |
 | Data source | [`umami_website`](docs/data-sources/website.md) |
+| Data source | [`umami_websites`](docs/data-sources/websites.md) |
+| Data source | [`umami_team`](docs/data-sources/team.md) |
+| Data source | [`umami_me`](docs/data-sources/me.md) |
 
 ## Developing the provider
 

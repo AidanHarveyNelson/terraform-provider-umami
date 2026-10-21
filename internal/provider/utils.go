@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -20,6 +21,10 @@ var (
 	// Umami's DOMAIN_REGEX without the lookahead RE2 does not support.
 	domainRegex = regexp.MustCompile(`^(localhost(:[1-9]\d{0,4})?|(([a-z0-9-_]{1,63}\.))+([a-z0-9-_]{2,63}))$`)
 )
+
+func containsFold(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
 
 func isNotFoundError(err error) bool {
 	return errors.Is(err, ErrNotFound)
