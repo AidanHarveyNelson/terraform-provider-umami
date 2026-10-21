@@ -152,6 +152,123 @@ resource "umami_website" "test" {
 	})
 }
 
+func TestAccWebsiteResourceReplayConfig(t *testing.T) {
+	testID := acctest.RandomWithPrefix("tfacc-")
+
+	config := func(replay string) string {
+		return fmt.Sprintf(`
+resource "umami_website" "test" {
+  name   = %[1]q
+  domain = "%[1]s.example.com"
+  %[2]s
+}
+`, testID, replay)
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckWebsiteDestroyed(t),
+		Steps: []resource.TestStep{
+			{
+				Config: config(`
+  replay_config = {
+    replay_enabled = true
+    sample_rate    = 0.5
+    mask_level     = "strict"
+    max_duration   = 60000
+    block_selector = ".private"
+  }`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("umami_website.test", "replay_config.replay_enabled", "true"),
+					resource.TestCheckResourceAttr("umami_website.test", "replay_config.heatmap_enabled", "false"),
+					resource.TestCheckResourceAttr("umami_website.test", "replay_config.sample_rate", "0.5"),
+					resource.TestCheckResourceAttr("umami_website.test", "replay_config.mask_level", "strict"),
+					resource.TestCheckResourceAttr("umami_website.test", "replay_config.max_duration", "60000"),
+					resource.TestCheckResourceAttr("umami_website.test", "replay_config.block_selector", ".private"),
+				),
+			},
+			{
+				ResourceName:            "umami_website.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"replay_config"},
+			},
+			{
+				// Fields removed from the configuration must not survive Umami's merge.
+				Config: config(`
+  replay_config = {
+    heatmap_enabled     = true
+    heatmap_sample_rate = 0.25
+  }`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("umami_website.test", "replay_config.replay_enabled", "false"),
+					resource.TestCheckResourceAttr("umami_website.test", "replay_config.heatmap_enabled", "true"),
+					resource.TestCheckResourceAttr("umami_website.test", "replay_config.heatmap_sample_rate", "0.25"),
+					resource.TestCheckNoResourceAttr("umami_website.test", "replay_config.sample_rate"),
+					resource.TestCheckNoResourceAttr("umami_website.test", "replay_config.mask_level"),
+					testAccCheckWebsiteReplayConfig(t, map[string]any{"heatmapEnabled": true, "heatmapSampleRate": 0.25}),
+				),
+			},
+			{
+				Config: config(""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("umami_website.test", "replay_config"),
+					testAccCheckWebsiteReplayConfig(t, map[string]any{}),
+				),
+			},
+		},
+	})
+}
+
+func TestAccWebsiteResourceReplayConfigUnmanaged(t *testing.T) {
+	testID := acctest.RandomWithPrefix("tfacc-")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckWebsiteDestroyed(t),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+resource "umami_website" "test" {
+  name   = %[1]q
+  domain = "%[1]s.example.com"
+}
+`, testID),
+				// Settings changed in the UI are not drift when replay_config is not configured.
+				Check: func(s *terraform.State) error {
+					id := s.RootModule().Resources["umami_website.test"].Primary.ID
+					_, err := testAccClient(t).UpdateWebsite(context.Background(), id, UpdateWebsiteRequest{ReplayConfig: []byte(`{"replayEnabled":true}`)})
+					return err
+				},
+			},
+			{
+				Config: fmt.Sprintf(`
+resource "umami_website" "test" {
+  name   = %[1]q
+  domain = "%[1]s.example.com"
+}
+`, testID),
+				PlanOnly: true,
+			},
+		},
+	})
+}
+
+func testAccCheckWebsiteReplayConfig(t *testing.T, want map[string]any) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		w, err := testAccClient(t).GetWebsite(context.Background(), s.RootModule().Resources["umami_website.test"].Primary.ID)
+		if err != nil {
+			return err
+		}
+		if fmt.Sprint(w.ReplayConfig) != fmt.Sprint(want) {
+			return fmt.Errorf("replay config = %v, want %v", w.ReplayConfig, want)
+		}
+		return nil
+	}
+}
+
 func testAccCheckWebsiteDestroyed(t *testing.T) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client := testAccClient(t)
