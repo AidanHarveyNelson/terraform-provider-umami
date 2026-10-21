@@ -80,6 +80,7 @@ terraform import umami_website.app a8729a96-0000-4000-8000-000000000000
 | Type | Name |
 | --- | --- |
 | Resource | [`umami_website`](docs/resources/website.md) |
+| Resource | [`umami_website_share`](docs/resources/website_share.md) |
 | Resource | [`umami_team`](docs/resources/team.md) |
 | Resource | [`umami_team_member`](docs/resources/team_member.md) |
 | Data source | [`umami_website`](docs/data-sources/website.md) |
