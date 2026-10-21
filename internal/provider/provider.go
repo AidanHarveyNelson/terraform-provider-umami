@@ -148,6 +148,7 @@ func (p *UmamiProvider) Resources(ctx context.Context) []func() resource.Resourc
 		NewTeamMemberResource,
 		NewTeamResource,
 		NewWebsiteResource,
+		NewWebsiteShareResource,
 	}
 }
 

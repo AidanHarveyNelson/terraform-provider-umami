@@ -443,3 +443,76 @@ func (c *Client) UpdateTeamMember(ctx context.Context, teamID, userID, role stri
 func (c *Client) RemoveTeamMember(ctx context.Context, teamID, userID string) error {
 	return c.do(ctx, http.MethodDelete, teamMemberPath(teamID, userID), nil, nil)
 }
+
+const shareTypeWebsite = 1
+
+type Share struct {
+	ID         string         `json:"id"`
+	EntityID   string         `json:"entityId"`
+	Name       string         `json:"name"`
+	Slug       string         `json:"slug"`
+	Parameters map[string]any `json:"parameters"`
+	CreatedAt  *string        `json:"createdAt"`
+}
+
+type ShareRequest struct {
+	EntityID   string         `json:"entityId,omitempty"`
+	ShareType  int            `json:"shareType,omitempty"`
+	Name       string         `json:"name"`
+	Slug       string         `json:"slug,omitempty"`
+	Parameters map[string]any `json:"parameters"`
+}
+
+// Umami answers a duplicate slug with an empty 500.
+func shareSlugHint(err error, slug string) error {
+	var apiErr *APIError
+	if slug != "" && errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusInternalServerError {
+		return fmt.Errorf("%w (the slug %q may already be in use)", err, slug)
+	}
+	return err
+}
+
+func (c *Client) CreateShare(ctx context.Context, in ShareRequest) (*Share, error) {
+	var share Share
+	if err := c.do(ctx, http.MethodPost, "/share", in, &share); err != nil {
+		return nil, shareSlugHint(err, in.Slug)
+	}
+	if share.ID == "" {
+		return nil, errors.New("POST /share: response did not contain a share id")
+	}
+	return &share, nil
+}
+
+// GET /share/id/{id} fails with a 500 for unknown ids, so shares are read from the website's list.
+func (c *Client) GetWebsiteShare(ctx context.Context, websiteID, shareID string) (*Share, error) {
+	for page := 1; ; page++ {
+		var res struct {
+			Data  []Share `json:"data"`
+			Count int     `json:"count"`
+		}
+		path := fmt.Sprintf("/websites/%s/shares?page=%d&pageSize=100", url.PathEscape(websiteID), page)
+		if err := c.do(ctx, http.MethodGet, path, nil, &res); err != nil {
+			return nil, c.resolveMissing(ctx, err)
+		}
+		for i := range res.Data {
+			if res.Data[i].ID == shareID {
+				return &res.Data[i], nil
+			}
+		}
+		if len(res.Data) == 0 || page*100 >= res.Count {
+			return nil, ErrNotFound
+		}
+	}
+}
+
+func (c *Client) UpdateShare(ctx context.Context, id string, in ShareRequest) (*Share, error) {
+	var share Share
+	if err := c.do(ctx, http.MethodPost, "/share/id/"+url.PathEscape(id), in, &share); err != nil {
+		return nil, shareSlugHint(err, in.Slug)
+	}
+	return &share, nil
+}
+
+func (c *Client) DeleteShare(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/share/id/"+url.PathEscape(id), nil, nil)
+}
