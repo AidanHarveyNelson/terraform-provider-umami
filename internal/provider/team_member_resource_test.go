@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -17,7 +18,7 @@ import (
 
 func TestAccTeamMemberResource(t *testing.T) {
 	testID := acctest.RandomWithPrefix("tfacc-")
-	userID := testAccMemberUserID(t)
+	userID := os.Getenv(envTestMemberUserID)
 
 	config := func(role string) string {
 		return fmt.Sprintf(`
@@ -34,7 +35,7 @@ resource "umami_team_member" "test" {
 	}
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheckMember(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckTeamMemberDestroyed(t),
 		Steps: []resource.TestStep{
@@ -73,10 +74,10 @@ resource "umami_team_member" "test" {
 
 func TestAccTeamMemberResourceDisappears(t *testing.T) {
 	testID := acctest.RandomWithPrefix("tfacc-")
-	userID := testAccMemberUserID(t)
+	userID := os.Getenv(envTestMemberUserID)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheckMember(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{

@@ -29,14 +29,13 @@ func testAccPreCheck(t *testing.T) {
 
 const envTestMemberUserID = "UMAMI_TEST_MEMBER_USER_ID"
 
-func testAccMemberUserID(t *testing.T) string {
+func testAccPreCheckMember(t *testing.T) {
 	t.Helper()
 
-	id := os.Getenv(envTestMemberUserID)
-	if id == "" {
+	testAccPreCheck(t)
+	if os.Getenv(envTestMemberUserID) == "" {
 		t.Fatalf("%s must be set to the ID of a second user for team membership tests", envTestMemberUserID)
 	}
-	return id
 }
 
 func testAccClient(t *testing.T) *Client {
