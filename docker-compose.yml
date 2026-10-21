@@ -4,7 +4,7 @@ services:
   umami:
     image: ghcr.io/umami-software/umami:${UMAMI_VERSION:-3.4.0}
     ports:
-      - '3000:3000'
+      - '${UMAMI_PORT:-3000}:3000'
     environment:
       DATABASE_URL: postgresql://umami:umami@db:5432/umami
       APP_SECRET: terraform-provider-umami-acceptance-tests
