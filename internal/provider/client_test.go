@@ -277,3 +277,19 @@ func TestGetTeamMemberNotFound(t *testing.T) {
 		})
 	}
 }
+
+func TestReplayConfigRoundTrip(t *testing.T) {
+	var cfg map[string]any
+	if err := json.Unmarshal([]byte(`{"replayEnabled":true,"sampleRate":0.5,"maxDuration":60000,"maskLevel":"strict"}`), &cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, diags := expandReplayConfig(context.Background(), flattenReplayConfig(cfg))
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+	want := `{"heatmapEnabled":false,"maskLevel":"strict","maxDuration":60000,"replayEnabled":true,"sampleRate":0.5}`
+	if string(raw) != want {
+		t.Fatalf("got %s, want %s", raw, want)
+	}
+}

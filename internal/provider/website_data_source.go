@@ -63,6 +63,19 @@ func (d *WebsiteDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				MarkdownDescription: "Creation timestamp (RFC 3339).",
 				Computed:            true,
 			},
+			"replay_config": schema.SingleNestedAttribute{
+				MarkdownDescription: "Session replay and heatmap settings.",
+				Computed:            true,
+				Attributes: map[string]schema.Attribute{
+					"replay_enabled":      schema.BoolAttribute{MarkdownDescription: "Whether session replays are recorded.", Computed: true},
+					"heatmap_enabled":     schema.BoolAttribute{MarkdownDescription: "Whether heatmaps are recorded.", Computed: true},
+					"sample_rate":         schema.Float64Attribute{MarkdownDescription: "Share of sessions replays are recorded for.", Computed: true},
+					"heatmap_sample_rate": schema.Float64Attribute{MarkdownDescription: "Share of sessions heatmaps are recorded for.", Computed: true},
+					"mask_level":          schema.StringAttribute{MarkdownDescription: "How much page content replays hide.", Computed: true},
+					"max_duration":        schema.Int64Attribute{MarkdownDescription: "Longest replay recorded, in milliseconds.", Computed: true},
+					"block_selector":      schema.StringAttribute{MarkdownDescription: "CSS selector for elements left out of replays.", Computed: true},
+				},
+			},
 		},
 	}
 }

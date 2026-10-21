@@ -270,6 +270,8 @@ type Website struct {
 	CreatedBy *string `json:"createdBy"`
 	CreatedAt *string `json:"createdAt"`
 	DeletedAt *string `json:"deletedAt"`
+
+	ReplayConfig map[string]any `json:"replayConfig"`
 }
 
 type CreateWebsiteRequest struct {
@@ -303,8 +305,11 @@ func (c *Client) GetWebsite(ctx context.Context, id string) (*Website, error) {
 }
 
 type UpdateWebsiteRequest struct {
-	Name   string `json:"name"`
-	Domain string `json:"domain"`
+	Name   string `json:"name,omitempty"`
+	Domain string `json:"domain,omitempty"`
+
+	// Omitted leaves the replay config alone, "null" resets it, and an object is merged into it.
+	ReplayConfig json.RawMessage `json:"replayConfig,omitempty"`
 }
 
 func (c *Client) UpdateWebsite(ctx context.Context, id string, body UpdateWebsiteRequest) (*Website, error) {

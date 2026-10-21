@@ -5,12 +5,16 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -87,6 +91,48 @@ func (r *WebsiteResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			"replay_config": schema.SingleNestedAttribute{
+				MarkdownDescription: "Session replay and heatmap settings. When omitted, Terraform leaves them to the Umami UI. Removing it after it was set resets them, which turns both off. Recording also needs Umami's recorder script on the site.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"replay_enabled": schema.BoolAttribute{
+						MarkdownDescription: "Whether to record session replays. Defaults to `false`.",
+						Optional:            true,
+						Computed:            true,
+						Default:             booldefault.StaticBool(false),
+					},
+					"heatmap_enabled": schema.BoolAttribute{
+						MarkdownDescription: "Whether to record heatmaps. Defaults to `false`.",
+						Optional:            true,
+						Computed:            true,
+						Default:             booldefault.StaticBool(false),
+					},
+					"sample_rate": schema.Float64Attribute{
+						MarkdownDescription: "Share of sessions to record replays for, from 0 to 1. The recorder uses 0.15 when omitted.",
+						Optional:            true,
+						Validators:          []validator.Float64{float64validator.Between(0, 1)},
+					},
+					"heatmap_sample_rate": schema.Float64Attribute{
+						MarkdownDescription: "Share of sessions to record heatmaps for, from 0 to 1. The recorder uses 0.15 when omitted.",
+						Optional:            true,
+						Validators:          []validator.Float64{float64validator.Between(0, 1)},
+					},
+					"mask_level": schema.StringAttribute{
+						MarkdownDescription: "How much page content replays hide: `strict` or `moderate`. The recorder uses `moderate` when omitted.",
+						Optional:            true,
+						Validators:          []validator.String{stringvalidator.OneOf("strict", "moderate")},
+					},
+					"max_duration": schema.Int64Attribute{
+						MarkdownDescription: "Longest replay to record, in milliseconds. The recorder uses 300000 (5 minutes) when omitted.",
+						Optional:            true,
+						Validators:          []validator.Int64{int64validator.AtLeast(1)},
+					},
+					"block_selector": schema.StringAttribute{
+						MarkdownDescription: "CSS selector for elements to leave out of replays.",
+						Optional:            true,
+					},
+				},
+			},
 		},
 	}
 }
@@ -127,7 +173,7 @@ func (r *WebsiteResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	website, err := r.client.GetWebsite(ctx, created.ID)
+	website, err := r.applyReplayConfig(ctx, created.ID, plan.ReplayConfig)
 	if err != nil {
 		if cleanupErr := r.client.DeleteWebsite(ctx, created.ID); cleanupErr != nil {
 			tflog.Warn(ctx, "Failed to clean up website after create failure", map[string]any{"id": created.ID, "error": cleanupErr.Error()})
@@ -141,6 +187,7 @@ func (r *WebsiteResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	state := flattenWebsite(website)
+	state.ReplayConfig = keepUnmanaged(state.ReplayConfig, plan.ReplayConfig)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -161,8 +208,9 @@ func (r *WebsiteResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	state = flattenWebsite(website)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	newState := flattenWebsite(website)
+	newState.ReplayConfig = keepUnmanaged(newState.ReplayConfig, state.ReplayConfig)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
 func (r *WebsiteResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -183,19 +231,51 @@ func (r *WebsiteResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	body := UpdateWebsiteRequest{Name: plan.Name.ValueString(), Domain: plan.Domain.ValueString()}
+	replayChanged := !plan.ReplayConfig.Equal(state.ReplayConfig)
+	if replayChanged {
+		// Umami merges replay settings, so reset them before applying the plan.
+		body.ReplayConfig = json.RawMessage("null")
+	}
 	if _, err := r.client.UpdateWebsite(ctx, id, body); err != nil {
 		resp.Diagnostics.AddError("Error Updating Website", fmt.Sprintf("Could not update website ID %s: %s", id, err))
 		return
 	}
 
-	website, err := r.client.GetWebsite(ctx, id)
+	replay := types.ObjectNull(replayConfigAttrTypes)
+	if replayChanged {
+		replay = plan.ReplayConfig
+	}
+	website, err := r.applyReplayConfig(ctx, id, replay)
 	if err != nil {
-		resp.Diagnostics.AddError("Error Reading Website", fmt.Sprintf("Could not read website ID %s: %s", id, err))
+		resp.Diagnostics.AddError("Error Updating Website", fmt.Sprintf("Could not update the replay config of website ID %s: %s", id, err))
 		return
 	}
 
 	newState := flattenWebsite(website)
+	newState.ReplayConfig = keepUnmanaged(newState.ReplayConfig, plan.ReplayConfig)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
+}
+
+// applyReplayConfig sets the replay config when it is managed and returns the website as stored.
+func (r *WebsiteResource) applyReplayConfig(ctx context.Context, id string, replay types.Object) (*Website, error) {
+	if !replay.IsNull() {
+		raw, diags := expandReplayConfig(ctx, replay)
+		if diags.HasError() {
+			return nil, fmt.Errorf("encoding replay config: %v", diags)
+		}
+		if _, err := r.client.UpdateWebsite(ctx, id, UpdateWebsiteRequest{ReplayConfig: raw}); err != nil {
+			return nil, err
+		}
+	}
+	return r.client.GetWebsite(ctx, id)
+}
+
+// Replay settings left out of the configuration belong to the Umami UI.
+func keepUnmanaged(actual, configured types.Object) types.Object {
+	if configured.IsNull() {
+		return types.ObjectNull(replayConfigAttrTypes)
+	}
+	return actual
 }
 
 // Non-admins cannot move a website between teams directly, so it goes through the user first.

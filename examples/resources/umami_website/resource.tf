@@ -9,6 +9,14 @@ resource "umami_website" "example" {
   name    = "Example app"
   domain  = "app.example.com"
   team_id = umami_team.client.id
+
+  replay_config = {
+    replay_enabled  = true
+    heatmap_enabled = true
+    sample_rate     = 0.1
+    mask_level      = "strict"
+    block_selector  = "[data-private]"
+  }
 }
 
 output "website_id" {

@@ -31,5 +31,19 @@ data "umami_website" "example" {
 - `created_by` (String) ID of the user that created the website.
 - `domain` (String) Domain of the website.
 - `name` (String) Display name of the website.
+- `replay_config` (Attributes) Session replay and heatmap settings. (see [below for nested schema](#nestedatt--replay_config))
 - `team_id` (String) ID of the team that owns the website, if any.
 - `user_id` (String) ID of the user that owns the website, if any.
+
+<a id="nestedatt--replay_config"></a>
+### Nested Schema for `replay_config`
+
+Read-Only:
+
+- `block_selector` (String) CSS selector for elements left out of replays.
+- `heatmap_enabled` (Boolean) Whether heatmaps are recorded.
+- `heatmap_sample_rate` (Number) Share of sessions heatmaps are recorded for.
+- `mask_level` (String) How much page content replays hide.
+- `max_duration` (Number) Longest replay recorded, in milliseconds.
+- `replay_enabled` (Boolean) Whether session replays are recorded.
+- `sample_rate` (Number) Share of sessions replays are recorded for.
