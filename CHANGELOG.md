@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `umami_team_member` resource, to add users to a team with a role.
 - `umami_website_share` resource, for public dashboard links.
 - `replay_config` on `umami_website`, for session replay and heatmap settings.
+- `umami_website` data source lookup by `domain`.
+- `umami_websites`, `umami_team` and `umami_me` data sources.
 
 ## [0.1.0] - 2026-10-22
 
