@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   script name.
 - `umami_user` resource and data source, for admins. They need username and
   password authentication, because Umami refuses API keys for users.
+- `umami_link` and `umami_pixel` resources, for tracked short links and
+  tracking pixels.
 
 ## [0.1.0] - 2026-10-22
 
