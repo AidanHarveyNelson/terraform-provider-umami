@@ -261,6 +261,26 @@ func (c *Client) GetMe(ctx context.Context) (*Me, error) {
 	return &me, nil
 }
 
+type Config struct {
+	CloudMode              bool    `json:"cloudMode"`
+	PrivateMode            bool    `json:"privateMode"`
+	SessionDeletionEnabled bool    `json:"sessionDeletionEnabled"`
+	TelemetryDisabled      bool    `json:"telemetryDisabled"`
+	UpdatesDisabled        bool    `json:"updatesDisabled"`
+	TrackerScriptName      *string `json:"trackerScriptName"`
+	FaviconURL             *string `json:"faviconUrl"`
+	LinksURL               *string `json:"linksUrl"`
+	PixelsURL              *string `json:"pixelsUrl"`
+}
+
+func (c *Client) GetConfig(ctx context.Context) (*Config, error) {
+	var cfg Config
+	if err := c.do(ctx, http.MethodGet, "/config", nil, &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
 type Website struct {
 	ID        string  `json:"id"`
 	Name      string  `json:"name"`
