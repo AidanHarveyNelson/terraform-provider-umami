@@ -147,6 +147,7 @@ func (p *UmamiProvider) Resources(ctx context.Context) []func() resource.Resourc
 	return []func() resource.Resource{
 		NewTeamMemberResource,
 		NewTeamResource,
+		NewUserResource,
 		NewWebsiteResource,
 		NewWebsiteShareResource,
 	}
@@ -157,6 +158,7 @@ func (p *UmamiProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		NewConfigDataSource,
 		NewMeDataSource,
 		NewTeamDataSource,
+		NewUserDataSource,
 		NewWebsiteDataSource,
 		NewWebsitesDataSource,
 	}

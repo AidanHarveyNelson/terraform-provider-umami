@@ -3,12 +3,12 @@
 page_title: "umami_team_member Resource - umami"
 subcategory: ""
 description: |-
-  A user's membership of an Umami team. The authenticated user needs the team-owner or team-manager role in the team, and must outrank the member's role to change or remove it. The team owner's own membership cannot be managed. Users themselves are created by an Umami admin. See documentation https://docs.umami.is/docs/api/teams for more details.
+  A user's membership of an Umami team. The authenticated user needs the team-owner or team-manager role in the team, and must outrank the member's role to change or remove it. The team owner's own membership cannot be managed. Users themselves are created by an Umami admin, for example with umami_user, and the umami_user data source looks up an existing user's ID. See documentation https://docs.umami.is/docs/api/teams for more details.
 ---
 
 # umami_team_member (Resource)
 
-A user's membership of an Umami team. The authenticated user needs the team-owner or team-manager role in the team, and must outrank the member's role to change or remove it. The team owner's own membership cannot be managed. Users themselves are created by an Umami admin. See [documentation](https://docs.umami.is/docs/api/teams) for more details.
+A user's membership of an Umami team. The authenticated user needs the team-owner or team-manager role in the team, and must outrank the member's role to change or remove it. The team owner's own membership cannot be managed. Users themselves are created by an Umami admin, for example with `umami_user`, and the `umami_user` data source looks up an existing user's ID. See [documentation](https://docs.umami.is/docs/api/teams) for more details.
 
 ## Example Usage
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Prints a .env for running acceptance tests against the docker-compose Umami
 # as a non-admin user: scripts/testacc-env.sh [api_key|login|fallback] > .env
-# It also creates a second user for team membership tests.
+# It also creates a second user for team membership tests, and passes on the
+# admin login for user tests.
 #   api_key   a real API key (Umami v3.4.0+)
 #   login     username and password
 #   fallback  an invalid API key plus username and password, to exercise the
@@ -40,6 +41,8 @@ member_id="$(create_user tfacc-member view-only)"
 
 echo "UMAMI_API_CLIENT_ENDPOINT=$endpoint"
 echo "UMAMI_TEST_MEMBER_USER_ID=$member_id"
+echo "UMAMI_TEST_ADMIN_USERNAME=admin"
+echo "UMAMI_TEST_ADMIN_PASSWORD=umami"
 
 case "$mode" in
   api_key)
