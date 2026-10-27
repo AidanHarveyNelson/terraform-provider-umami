@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `umami_config` data source, for the server settings such as the tracking
+  script name.
+
 ## [0.1.0] - 2026-10-22
 
 ### Added
