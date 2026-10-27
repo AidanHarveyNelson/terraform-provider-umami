@@ -521,7 +521,7 @@ type ShareRequest struct {
 }
 
 // Umami answers a duplicate slug with an empty 500.
-func shareSlugHint(err error, slug string) error {
+func slugHint(err error, slug string) error {
 	var apiErr *APIError
 	if slug != "" && errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusInternalServerError {
 		return fmt.Errorf("%w (the slug %q may already be in use)", err, slug)
@@ -532,7 +532,7 @@ func shareSlugHint(err error, slug string) error {
 func (c *Client) CreateShare(ctx context.Context, in ShareRequest) (*Share, error) {
 	var share Share
 	if err := c.do(ctx, http.MethodPost, "/share", in, &share); err != nil {
-		return nil, shareSlugHint(err, in.Slug)
+		return nil, slugHint(err, in.Slug)
 	}
 	if share.ID == "" {
 		return nil, errors.New("POST /share: response did not contain a share id")
@@ -565,7 +565,7 @@ func (c *Client) GetWebsiteShare(ctx context.Context, websiteID, shareID string)
 func (c *Client) UpdateShare(ctx context.Context, id string, in ShareRequest) (*Share, error) {
 	var share Share
 	if err := c.do(ctx, http.MethodPost, "/share/id/"+url.PathEscape(id), in, &share); err != nil {
-		return nil, shareSlugHint(err, in.Slug)
+		return nil, slugHint(err, in.Slug)
 	}
 	return &share, nil
 }
@@ -641,4 +641,90 @@ func (c *Client) UpdateUser(ctx context.Context, id string, in UserRequest) (*Us
 
 func (c *Client) DeleteUser(ctx context.Context, id string) error {
 	return adminHint(c.do(ctx, http.MethodDelete, "/users/"+url.PathEscape(id), nil, nil))
+}
+
+// Links and pixels share their routes and fields, apart from a link's url.
+type Link struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	URL       string  `json:"url"`
+	Slug      string  `json:"slug"`
+	UserID    *string `json:"userId"`
+	TeamID    *string `json:"teamId"`
+	CreatedAt *string `json:"createdAt"`
+	DeletedAt *string `json:"deletedAt"`
+}
+
+type Pixel = Link
+
+type LinkRequest struct {
+	Name   string  `json:"name,omitempty"`
+	URL    string  `json:"url,omitempty"`
+	Slug   string  `json:"slug,omitempty"`
+	TeamID *string `json:"teamId,omitempty"`
+}
+
+type PixelRequest = LinkRequest
+
+func (c *Client) createSlugged(ctx context.Context, path string, in LinkRequest) (*Link, error) {
+	var out Link
+	if err := c.do(ctx, http.MethodPost, path, in, &out); err != nil {
+		return nil, slugHint(err, in.Slug)
+	}
+	if out.ID == "" {
+		return nil, fmt.Errorf("POST %s: response did not contain an id", path)
+	}
+	return &out, nil
+}
+
+func (c *Client) getSlugged(ctx context.Context, path string) (*Link, error) {
+	var out *Link
+	if err := c.do(ctx, http.MethodGet, path, nil, &out); err != nil {
+		return nil, c.resolveMissing(ctx, err)
+	}
+	// Admins get 200 with a null body for unknown ids; Umami Cloud soft-deletes.
+	if out == nil || out.ID == "" || out.DeletedAt != nil {
+		return nil, ErrNotFound
+	}
+	return out, nil
+}
+
+func (c *Client) updateSlugged(ctx context.Context, path string, in LinkRequest) (*Link, error) {
+	var out Link
+	if err := c.do(ctx, http.MethodPost, path, in, &out); err != nil {
+		return nil, slugHint(err, in.Slug)
+	}
+	return &out, nil
+}
+
+func (c *Client) CreateLink(ctx context.Context, in LinkRequest) (*Link, error) {
+	return c.createSlugged(ctx, "/links", in)
+}
+
+func (c *Client) GetLink(ctx context.Context, id string) (*Link, error) {
+	return c.getSlugged(ctx, "/links/"+url.PathEscape(id))
+}
+
+func (c *Client) UpdateLink(ctx context.Context, id string, in LinkRequest) (*Link, error) {
+	return c.updateSlugged(ctx, "/links/"+url.PathEscape(id), in)
+}
+
+func (c *Client) DeleteLink(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/links/"+url.PathEscape(id), nil, nil)
+}
+
+func (c *Client) CreatePixel(ctx context.Context, in PixelRequest) (*Pixel, error) {
+	return c.createSlugged(ctx, "/pixels", in)
+}
+
+func (c *Client) GetPixel(ctx context.Context, id string) (*Pixel, error) {
+	return c.getSlugged(ctx, "/pixels/"+url.PathEscape(id))
+}
+
+func (c *Client) UpdatePixel(ctx context.Context, id string, in PixelRequest) (*Pixel, error) {
+	return c.updateSlugged(ctx, "/pixels/"+url.PathEscape(id), in)
+}
+
+func (c *Client) DeletePixel(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/pixels/"+url.PathEscape(id), nil, nil)
 }
