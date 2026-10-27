@@ -573,3 +573,72 @@ func (c *Client) UpdateShare(ctx context.Context, id string, in ShareRequest) (*
 func (c *Client) DeleteShare(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/share/id/"+url.PathEscape(id), nil, nil)
 }
+
+type User struct {
+	ID        string  `json:"id"`
+	Username  string  `json:"username"`
+	Role      string  `json:"role"`
+	CreatedAt *string `json:"createdAt"`
+}
+
+type UserRequest struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	Role     string `json:"role,omitempty"`
+}
+
+// The user routes need an admin session: API keys are refused on them, and
+// non-admins get 401 for every user but themselves.
+func adminHint(err error) error {
+	if isUnauthorized(err) {
+		return fmt.Errorf("%w: managing users needs an Umami admin authenticated with username and password, because Umami refuses API keys for users", err)
+	}
+	return err
+}
+
+func (c *Client) CreateUser(ctx context.Context, in UserRequest) (*User, error) {
+	var user User
+	if err := c.do(ctx, http.MethodPost, "/users", in, &user); err != nil {
+		return nil, adminHint(err)
+	}
+	if user.ID == "" {
+		return nil, errors.New("POST /users: response did not contain a user id")
+	}
+	return &user, nil
+}
+
+// A 401 is not treated as "not found" here, since it is what non-admins get for every user.
+func (c *Client) GetUser(ctx context.Context, id string) (*User, error) {
+	var user *User
+	if err := c.do(ctx, http.MethodGet, "/users/"+url.PathEscape(id), nil, &user); err != nil {
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, adminHint(err)
+	}
+	if user == nil || user.ID == "" {
+		return nil, ErrNotFound
+	}
+	return user, nil
+}
+
+func (c *Client) ListUsers(ctx context.Context, search string) ([]User, error) {
+	users, err := listAll[User](ctx, c, "/admin/users?"+url.Values{"search": {search}}.Encode())
+	if err != nil {
+		return nil, adminHint(err)
+	}
+	return users, nil
+}
+
+func (c *Client) UpdateUser(ctx context.Context, id string, in UserRequest) (*User, error) {
+	var user User
+	if err := c.do(ctx, http.MethodPost, "/users/"+url.PathEscape(id), in, &user); err != nil {
+		return nil, adminHint(err)
+	}
+	return &user, nil
+}
+
+func (c *Client) DeleteUser(ctx context.Context, id string) error {
+	return adminHint(c.do(ctx, http.MethodDelete, "/users/"+url.PathEscape(id), nil, nil))
+}

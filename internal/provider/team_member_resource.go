@@ -36,7 +36,7 @@ func (r *TeamMemberResource) Metadata(ctx context.Context, req resource.Metadata
 
 func (r *TeamMemberResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "A user's membership of an Umami team. The authenticated user needs the team-owner or team-manager role in the team, and must outrank the member's role to change or remove it. The team owner's own membership cannot be managed. Users themselves are created by an Umami admin. See [documentation](https://docs.umami.is/docs/api/teams) for more details.",
+		MarkdownDescription: "A user's membership of an Umami team. The authenticated user needs the team-owner or team-manager role in the team, and must outrank the member's role to change or remove it. The team owner's own membership cannot be managed. Users themselves are created by an Umami admin, for example with `umami_user`, and the `umami_user` data source looks up an existing user's ID. See [documentation](https://docs.umami.is/docs/api/teams) for more details.",
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
