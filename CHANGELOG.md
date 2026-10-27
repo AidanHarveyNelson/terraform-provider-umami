@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-27
+
 ### Added
 
 - `umami_config` data source, for the server settings such as the tracking
@@ -31,5 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `umami_website` data source, looked up by `id` or `domain`.
 - `umami_websites`, `umami_team` and `umami_me` data sources.
 
-[Unreleased]: https://github.com/AidanHarveyNelson/terraform-provider-umami/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/AidanHarveyNelson/terraform-provider-umami/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/AidanHarveyNelson/terraform-provider-umami/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/AidanHarveyNelson/terraform-provider-umami/releases/tag/v0.1.0
